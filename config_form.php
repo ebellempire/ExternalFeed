@@ -44,7 +44,7 @@
 	        <?php echo get_view()->formCheckbox('cf_notify', true,
 	array('checked'=>(boolean)get_option('cf_notify'))); ?>
 
-	        <p class="explanation"><?php echo __('Display calendar notifications to users with cookies enabled.'); ?></p>
+	        <p class="explanation"><?php echo __('Display calendar notifications. Dismissing the notification will hide it for 24 hours or until the user clears their browser cookies.'); ?></p>
 	    </div>
 	</div>
 	
@@ -58,7 +58,7 @@
 	        <?php echo get_view()->formCheckbox('cf_displayOnMobile', true,
 	array('checked'=>(boolean)get_option('cf_displayOnMobile'))); ?>
 
-	        <p class="explanation"><?php echo __('Display calendar notifications on mobile devices.'); ?></p>
+	        <p class="explanation"><?php echo __('Display calendar notifications on mobile devices (defined as browser viewports smaller than or equal to 768px).'); ?></p>
 	    </div>
 	</div>	
 	

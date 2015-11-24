@@ -35,13 +35,13 @@ class CalendarFeedPlugin extends Omeka_Plugin_AbstractPlugin
 	}
 
 	/*
-	** Public display
+	** Public default scripts and styles
 	*/
 
 	public function hookPublicFooter()
 	{
 
-		echo cf_calendar_scripts();
+		echo cf_footerScripts();
 
 	}
 
@@ -64,15 +64,36 @@ class CalendarFeedPlugin extends Omeka_Plugin_AbstractPlugin
 	}
 }
 
-function cf_calendar_scripts($option=null)
+function cf_footerScripts()
 {	
 	$feed=get_option('cf_rssfeed');
 	$show_mobile=get_option('cf_displayOnMobile');
+	$show_notifications=get_option('cf_notify');
 	$breakpoint='768';
 	?>
 	
 	<script type="text/javascript" src="https://www.google.com/jsapi"></script>
 	<script type="text/javascript">google.load("feeds", "1");</script>            
+
+	<?php
+
+	if(!$show_mobile){ ?>
+	
+	<style type="text/css">
+	@media all and (max-width:<?php echo $breakpoint;?>px){
+		#cf-notify-container{display:none !important;}
+	}
+	</style>
+	<?php }
+	
+	if($show_notifications){	
+		cf_calendarNotifications($feed);	
+	}
+}
+
+function cf_calendarNotifications($feed)
+{ 
+	if($feed): ?>
 	<script>
 	function stripHTML(dirtyString) {
 	    var container = document.createElement('div');
@@ -102,7 +123,7 @@ function cf_calendar_scripts($option=null)
 	    var feed = new google.feeds.Feed('<?php echo $feed;?>');
 	    feed.load(function (data) {
 	        
-	        if(getCookie('notify-closed')!=='true'){
+	        if(getCookie('cf-notify-closed')!=='true'){
 				var entry = data.feed.entries[0];
 				var date = new Date(entry.publishedDate);
 				var formattedDate = date.toLocaleString(navigator.language, {month:'long', day: 'numeric', year:'numeric', hour: '2-digit', minute:'2-digit'});
@@ -110,20 +131,20 @@ function cf_calendar_scripts($option=null)
 				parser.href = entry.link;
 		        
 		        // styles and container
-		        jQuery('body').prepend('<style type="text/css">#notify-container{display:none;background:#fff;box-shadow:0 0 .15em #333;position:relative;top:0;z-index:999;line-height:1.25em;padding:7px 0;}#notify-icon-close{cursor:pointer;float:right;height:1em;width:auto;position:relative;right:7px;top:7px;}#notify-inner{margin:0 auto;max-width:50em;}#notify-content{padding-left:75px;}#notify-icon-cal{height:60px;width:60px; padding-left:5px; float:left;}#notify-host{font-size:.8em;font-style:italic;color:#777;}#notify-content a{color:inherit;border:none;text-decoration:none;}#notify-date{font-size:.9em;}</style><div id="notify-container"></div>');
+		        jQuery('body').prepend('<style type="text/css">#cf-notify-container{display:none;background:#fff;box-shadow:0 0 .15em #333;position:relative;top:0;z-index:999;line-height:1.25em;padding:7px 0;}#cf-notify-icon-close{cursor:pointer;float:right;height:1em;width:auto;position:relative;right:7px;top:0px;}#cf-notify-inner{margin:0 auto;max-width:50em;}#cf-notify-content{padding-left:75px;}#cf-notify-icon-cal{height:60px;width:60px; padding-left:5px; float:left;}#cf-notify-host{font-size:.8em;font-style:italic;color:#777;}#cf-notify-content a{color:inherit;border:none;text-decoration:none;}#cf-notify-date{font-size:.9em;}</style><div id="cf-notify-container"></div>');
 		        
 		        // content
-		        jQuery('#notify-container').html('<div id="notify-inner"><img id="notify-icon-cal" src="/plugins/CalendarFeed/assets/cal.png"><div id="notify-content"><a href="'+entry.link+'" target="_blank"><strong>'+entry.title+'</strong></a><br><span id="notify-date">'+formattedDate+'</span><br><span id="notify-host">Learn more at <a style="" href="'+entry.link+'" target="_blank">'+parser.hostname+'</a></span></div></div>');
+		        jQuery('#cf-notify-container').html('<div id="cf-notify-inner"><img id="cf-notify-icon-cal" src="/plugins/CalendarFeed/assets/cal.png"><div id="cf-notify-content"><a href="'+entry.link+'" target="_blank"><strong>'+entry.title+'</strong></a><br><span id="cf-notify-date">'+formattedDate+'</span><br><span id="cf-notify-host">Learn more at <a style="" href="'+entry.link+'" target="_blank">'+parser.hostname+'</a></span></div></div>');
 		        
 		        // doing some tricks to get the height to work well with the animation
-		        var computedHeight=jQuery('#notify-container').height();
-		        jQuery('#notify-container').css("height",computedHeight).prepend('<img alt="close event notification" id="notify-icon-close" src="/plugins/CalendarFeed/assets/close.png">').slideDown('slow','swing');
+		        var computedHeight=jQuery('#cf-notify-container').height();
+		        jQuery('#cf-notify-container').css("height",computedHeight).prepend('<img alt="close event notification" id="cf-notify-icon-close" src="/plugins/CalendarFeed/assets/close.png">').slideDown('slow','swing');
 		        
 		        // close button
-				jQuery('#notify-icon-close').click(function(e){
+				jQuery('#cf-notify-icon-close').click(function(e){
 					var container=document.getElementById(this.parentElement.id);
 					jQuery(container).slideUp('fast','swing');
-					setCookie('notify-closed','true',1);
+					setCookie('cf-notify-closed','true',1);
 		
 				});
 	        }else{
@@ -132,16 +153,6 @@ function cf_calendar_scripts($option=null)
 	        
 	    });
 	});
-	</script>
-	<?php
-
-	if(!$show_mobile){ ?>
-	
-	<style type="text/css">
-	@media all and (max-width:<?php echo $breakpoint;?>px){
-		#notify#calendar{display:none !important;}
-	}
-	</style>
-	<?php }
-
-}
+	</script>	
+	<?php endif; 
+}		
