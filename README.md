@@ -1,2 +1,2 @@
 # Calendar Feed
-An Omeka plugin that utilizes an RSS calendar feed to notify users of upcoming events. Plugin assumes the event date is stored in the `publishedDate` element, which is common in WordPress event plugins.
+An Omeka plugin that utilizes any valid RSS feed to notify users of recent posts or upcoming events (future-dated RSS items) from an external website. Includes a shortcode for embedding an post/event RSS widget on any page.
