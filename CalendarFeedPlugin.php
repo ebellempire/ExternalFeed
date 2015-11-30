@@ -1,5 +1,5 @@
 <?php
-class CalendarFeedPlugin extends Omeka_Plugin_AbstractPlugin
+class ExternalFeedsPlugin extends Omeka_Plugin_AbstractPlugin
 {
 
 	protected $_hooks = array(
@@ -13,9 +13,11 @@ class CalendarFeedPlugin extends Omeka_Plugin_AbstractPlugin
 
 
 	protected $_options = array(
-		'cf_displayOnMobile'=>0,
-		'cf_notify'=>1,
-		'cf_rssfeed'=>null,
+		'ef_displayOnMobile'=>0,
+		'ef_notify'=>1,
+		'ef_rssfeed'=>null,
+		'ef_isCalendar'=>0,
+		'ef_cookieExpiration'=>1,
 	);
 
 
@@ -30,9 +32,11 @@ class CalendarFeedPlugin extends Omeka_Plugin_AbstractPlugin
 
 	public function hookConfig()
 	{
-		set_option('cf_displayOnMobile', (bool)(int)$_POST['cf_displayOnMobile']);
-		set_option('cf_notify', (bool)(int)$_POST['cf_notify']);
-		set_option('cf_rssfeed', $_POST['cf_rssfeed']);
+		set_option('ef_displayOnMobile', (bool)(int)$_POST['ef_displayOnMobile']);
+		set_option('ef_notify', (bool)(int)$_POST['ef_notify']);
+		set_option('ef_isCalendar', (bool)(int)$_POST['ef_isCalendar']);
+		set_option('ef_cookieExpiration', (int)$_POST['ef_cookieExpiration']);
+		set_option('ef_rssfeed', $_POST['ef_rssfeed']);
 	}
 
 	/*
@@ -42,7 +46,7 @@ class CalendarFeedPlugin extends Omeka_Plugin_AbstractPlugin
 	public function hookPublicFooter()
 	{
 
-		echo cf_footerScripts();
+		echo ef_footerScripts();
 
 	}
 
@@ -70,21 +74,39 @@ class CalendarFeedPlugin extends Omeka_Plugin_AbstractPlugin
 
     public function hookInitialize()
     {
-        add_shortcode('calendarfeed', array($this, 'cf_embedCalendarFeed'));
+        add_shortcode('externalfeed', array($this, 'ef_embedExternalFeed'));
     }
-
-    public function cf_embedCalendarFeed($args, $view)
+    
+    public function ef_embedExternalFeed($args, $view)
     {
-        return '<div id="cf-upcoming-container" style="display:none;"><div id="cf-upcoming-header"><img src="/plugins/CalendarFeed/assets/cal-trans.png"><h3>Upcoming Events</h3><div id="cf-upcoming-feed-link"><span></span></div></div><div id="cf-upcoming-inner"><ul></ul></div></div>';
+        // converts shortcode into hidden empty HTML container, which is populated by the footer scripts
+        return '<div id="ef-widget-container" style="display:none;"><div id="ef-widget-header"><img src="'.ef_feedIcon().'"><h3>'.ef_feedLabel().'</h3><div id="ef-widget-feed-link"><span></span></div></div><div id="ef-widget-inner"><ul></ul></div></div>';
     }	
+    
+
 	
 }
 
-function cf_footerScripts()
+function ef_feedIcon()
+{
+   return get_option('ef_isCalendar') ? '/plugins/CalendarFeed/assets/cal-trans.png' : '/plugins/CalendarFeed/assets/feed-trans.png';
+}
+
+function ef_feedLabel()
+{
+   return get_option('ef_isCalendar') ? 'Upcoming Events' : 'Recent News';
+}
+
+function ef_datePrefix()
+{
+   return get_option('ef_isCalendar') ? 'Save the date: ' : 'Posted: ';
+}
+
+function ef_footerScripts()
 {	
-	$feed=get_option('cf_rssfeed');
-	$show_mobile=get_option('cf_displayOnMobile');
-	$show_notifications=get_option('cf_notify');
+	$feed=get_option('ef_rssfeed');
+	$show_mobile=get_option('ef_displayOnMobile');
+	$show_notifications=get_option('ef_notify');
 	$breakpoint='768';
 	?>
 	
@@ -97,25 +119,25 @@ function cf_footerScripts()
 	
 	<style type="text/css">
 	@media all and (max-width:<?php echo $breakpoint;?>px){
-		#cf-notify-container{display:none !important;}
+		#ef-notify-container{display:none !important;}
 	}
 	</style>
 	<?php }
 	
-	if($show_notifications){	
-		cf_calendarNotifications($feed);	
-	}
+	ef_feedActions($feed,$show_notifications,ef_feedIcon(),ef_feedLabel(),ef_datePrefix());	
+
 }
 
-function cf_calendarNotifications($feed)
+function ef_feedActions($feed,$show_notifications,$icon,$label,$datePrefix)
 { 
 	if($feed): ?>
 	<script>
-	function stripHTML(dirtyString) {
-	    var container = document.createElement('div');
-	    container.innerHTML = dirtyString;
-	    return container.textContent || container.innerText;
-	}
+	var show_notifications ='<?php echo $show_notifications; ?>';
+	var icon ='<?php echo $icon;?>';	
+	var label ='<?php echo $label;?>';	
+	var is_cal ='<?php echo get_option('ef_isCalendar');?>';	
+	var exdays='<?php echo get_option('ef_cookieExpiration');?>';
+	
 
 	function setCookie(cname, cvalue, exdays) {
 	    var d = new Date();
@@ -134,11 +156,20 @@ function cf_calendarNotifications($feed)
 	    }
 	    return "";
 	}
+
 	
 	function formatDate(date){
+		var date_prefix ='<?php echo $datePrefix;?>';
 		var date = new Date(date);
-		var formattedDate = date.toLocaleString(navigator.language, {month:'long', day: 'numeric', year:'numeric', hour: '2-digit', minute:'2-digit'});	
-		return formattedDate;	
+		format=[];
+		var options={month:'long', day: 'numeric', year:'numeric'};
+		if(is_cal){
+			options.hour= '2-digit';
+			options.minute= '2-digit';
+		}
+		format=options;
+		var formattedDate = date.toLocaleString(navigator.language, format);	
+		return date_prefix+formattedDate;	
 	}
 	
 	function hostname(link){
@@ -152,39 +183,37 @@ function cf_calendarNotifications($feed)
 	    feed.load(function (data) {
 
 	        // styles and notification container
-	        jQuery('body').prepend('<style type="text/css">#cf-notify-container{display:none;background:#fff;box-shadow:0 0 .15em #333;position:relative;top:0;z-index:999;line-height:1.25em;padding:7px 0;}#cf-notify-icon-close{cursor:pointer;float:right;height:1em;width:auto;position:relative;right:7px;top:0px;}#cf-notify-inner{margin:0 auto;max-width:50em;}#cf-notify-content{padding-left:75px;}#cf-notify-icon-cal{height:60px;width:60px; padding-left:5px; float:left;}#cf-notify-host{font-size:.8em;font-style:italic;color:#777;}#cf-notify-content a{color:inherit;border:none;text-decoration:none;}#cf-notify-date{font-size:.9em;}#cf-upcoming-container{background: #eaeaea;padding: 0.5em;border-radius: .25em;}#cf-upcoming-container h3{}#cf-upcoming-inner{}#cf-upcoming-feed-link{color: #777;font-size: .9em;font-style: italic;}#cf-upcoming-feed-link a{color:inherit;}#cf-upcoming-container a{border:none;text-decoration:none;}#cf-upcoming-container h3{margin:0;}#cf-upcoming-header{}#cf-upcoming-header h3,#cf-upcoming-feed-link{padding-left:60px;}#cf-upcoming-header img{width:50px;height:auto;float:left;}  </style><div id="cf-notify-container"></div>');
+	        jQuery('body').prepend('<style type="text/css">#ef-notify-container{display:none;background:#fff;box-shadow:0 0 .15em #333;position:relative;top:0;z-index:999;line-height:1.25em;padding:7px 0;}#ef-notify-icon-close{cursor:pointer;float:right;height:1em;width:auto;position:relative;right:7px;top:0px;}#ef-notify-inner{margin:0 auto;max-width:50em;}#ef-notify-content{padding-left:75px;}#ef-notify-icon-cal{height:60px;width:60px; padding-left:5px; float:left;}#ef-notify-host{font-size:.8em;font-style:italic;color:#777;}#ef-notify-content a{color:inherit;border:none;text-decoration:none;}#ef-notify-date{font-size:.9em;}#ef-widget-container{background: #eaeaea;padding: 0.5em;border-radius: .25em;}#ef-widget-container h3{}#ef-widget-inner{}#ef-widget-feed-link{color: #777;font-size: .9em;font-style: italic;}#ef-widget-feed-link a{color:inherit;}#ef-widget-container a{border:none;text-decoration:none;}#ef-widget-container h3{margin:0;}#ef-widget-header{}#ef-widget-header h3,#ef-widget-feed-link{padding-left:60px;}#ef-widget-header img{width:50px;height:auto;float:left;}  </style><div id="ef-notify-container"></div>');
 		    
-		    // calendar embed
+		    // feed embed
 		    jQuery.each(data.feed.entries,function(e,event){
-			   console.log(event); 
-			   jQuery('#cf-upcoming-inner ul').append('<li><a href="'+event.link+'">'+event.title+'</a><br><span>'+formatDate(event.publishedDate)+'</span></li>');
+			   jQuery('#ef-widget-inner ul').append('<li><a href="'+event.link+'">'+event.title+'</a><br><span>'+formatDate(event.publishedDate)+'</span></li>');
 		    });
-		    jQuery('#cf-upcoming-feed-link span').html('via: <a href="'+data.feed.link+'">'+hostname(data.feed.link))+'</a>';
-		    jQuery('#cf-upcoming-container').fadeIn();
+		    jQuery('#ef-widget-feed-link span').html('via: <a href="'+data.feed.link+'">'+hostname(data.feed.link))+'</a>';
+		    jQuery('#ef-widget-container').fadeIn();
 		    
 		    
-		    
-		    // event notification 	        
-	        if(getCookie('cf-notify-closed')!=='true'){
+		    // feed notification 	        
+	        if(show_notifications && getCookie('ef-notify-closed')!=='true'){
 		        
 				var entry = data.feed.entries[0];
 		        
 		        // content
-		        jQuery('#cf-notify-container').html('<div id="cf-notify-inner"><img id="cf-notify-icon-cal" src="/plugins/CalendarFeed/assets/cal-trans.png"><div id="cf-notify-content"><a href="'+entry.link+'" target="_blank"><strong>'+entry.title+'</strong></a><br><span id="cf-notify-date">'+formatDate(entry.publishedDate)+'</span><br><span id="cf-notify-host">Learn more at <a style="" href="'+entry.link+'" target="_blank">'+hostname(entry.link)+'</a></span></div></div>');
+		        jQuery('#ef-notify-container').html('<div id="ef-notify-inner"><img id="ef-notify-icon-cal" src="'+icon+'"><div id="ef-notify-content"><a href="'+entry.link+'" target="_blank"><strong>'+entry.title+'</strong></a><br><span id="ef-notify-date">'+formatDate(entry.publishedDate)+'</span><br><span id="ef-notify-host">Learn more at <a style="" href="'+entry.link+'" target="_blank">'+hostname(entry.link)+'</a></span></div></div>');
 		        
 		        // doing some tricks to get the height to work well with the animation
-		        var computedHeight=jQuery('#cf-notify-container').height();
-		        jQuery('#cf-notify-container').css("height",computedHeight).prepend('<img alt="close event notification" id="cf-notify-icon-close" src="/plugins/CalendarFeed/assets/close.png">').slideDown('slow','swing');
+		        var computedHeight=jQuery('#ef-notify-container').height();
+		        jQuery('#ef-notify-container').css("height",computedHeight).prepend('<img alt="close event notification" id="ef-notify-icon-close" src="/plugins/CalendarFeed/assets/close.png">').slideDown('slow','swing');
 		        
 		        // close button
-				jQuery('#cf-notify-icon-close').click(function(e){
+				jQuery('#ef-notify-icon-close').click(function(e){
 					var container=document.getElementById(this.parentElement.id);
 					jQuery(container).slideUp('fast','swing');
-					setCookie('cf-notify-closed','true',1);
+					setCookie('ef-notify-closed','true', exdays);
 		
 				});
 	        }else{
-		        console.log('Notifications dismissed for one day.');
+		        console.log('Notifications dismissed until cookie expires or is deleted by user.');
 	        }
 	        
 	    });
