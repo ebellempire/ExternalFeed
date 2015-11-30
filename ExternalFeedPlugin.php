@@ -89,7 +89,7 @@ class ExternalFeedPlugin extends Omeka_Plugin_AbstractPlugin
 
 function ef_feedIcon()
 {
-   return get_option('ef_isCalendar') ? '/plugins/CalendarFeed/assets/cal-trans.png' : '/plugins/CalendarFeed/assets/feed-trans.png';
+   return get_option('ef_isCalendar') ? '/plugins/ExternalFeed/assets/cal-trans.png' : '/plugins/ExternalFeed/assets/feed-trans.png';
 }
 
 function ef_feedLabel()
@@ -203,7 +203,7 @@ function ef_feedActions($feed,$show_notifications,$icon,$label,$datePrefix)
 		        
 		        // doing some tricks to get the height to work well with the animation
 		        var computedHeight=jQuery('#ef-notify-container').height();
-		        jQuery('#ef-notify-container').css("height",computedHeight).prepend('<img alt="close event notification" id="ef-notify-icon-close" src="/plugins/CalendarFeed/assets/close.png">').slideDown('slow','swing');
+		        jQuery('#ef-notify-container').css("height",computedHeight).prepend('<img alt="close event notification" id="ef-notify-icon-close" src="/plugins/ExternalFeed/assets/close.png">').slideDown('slow','swing');
 		        
 		        // close button
 				jQuery('#ef-notify-icon-close').click(function(e){
